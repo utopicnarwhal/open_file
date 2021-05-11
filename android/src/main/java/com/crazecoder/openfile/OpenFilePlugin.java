@@ -29,7 +29,6 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,7 +64,8 @@ public class OpenFilePlugin implements MethodCallHandler
     private static final int RESULT_CODE = 0x12;
     private static final String TYPE_STRING_APK = "application/vnd.android.package-archive";
 
-    public static void registerWith(Registrar registrar) {
+    @Deprecated
+    public static void registerWith(PluginRegistry.Registrar registrar) {
         OpenFilePlugin plugin = new OpenFilePlugin();
         plugin.activity = registrar.activity();
         plugin.context = registrar.context();
@@ -74,7 +74,6 @@ public class OpenFilePlugin implements MethodCallHandler
         registrar.addRequestPermissionsResultListener(plugin);
         registrar.addActivityResultListener(plugin);
     }
-
 
     private boolean hasPermission(String permission) {
         return ContextCompat.checkSelfPermission(activity, permission) == PermissionChecker.PERMISSION_GRANTED;
@@ -129,19 +128,26 @@ public class OpenFilePlugin implements MethodCallHandler
 
 
     private void startActivity() {
+        if (filePath == null) {
+            result(-4, "the file path cannot be null");
+            return;
+        }
         File file = new File(filePath);
         if (!file.exists()) {
-            result(-2, "the " + filePath + " file is not exists");
+            result(-2, "the " + filePath + " file does not exists");
             return;
         }
 
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        if (TYPE_STRING_APK.equals(typeString))
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        else
+            intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         intent.addCategory("android.intent.category.DEFAULT");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             String packageName = context.getPackageName();
-            Uri uri = FileProvider.getUriForFile(context, packageName + ".fileProvider", new File(filePath));
+            Uri uri = FileProvider.getUriForFile(context, packageName + ".fileProvider.com.crazecoder.openfile", new File(filePath));
             intent.setDataAndType(uri, typeString);
         } else {
             intent.setDataAndType(Uri.fromFile(file), typeString);
@@ -163,10 +169,16 @@ public class OpenFilePlugin implements MethodCallHandler
 
     private String getFileType(String filePath) {
         String[] fileStrs = filePath.split("\\.");
-        String fileTypeStr = fileStrs[fileStrs.length - 1];
+        String fileTypeStr = fileStrs[fileStrs.length - 1].toLowerCase();
         switch (fileTypeStr) {
             case "3gp":
                 return "video/3gpp";
+            case "torrent":
+                return "application/x-bittorrent";
+            case "kml":
+                return "application/vnd.google-earth.kml+xml";
+            case "gpx":
+                return "application/gpx+xml";
             case "apk":
                 return TYPE_STRING_APK;
             case "asf":
@@ -174,13 +186,13 @@ public class OpenFilePlugin implements MethodCallHandler
             case "avi":
                 return "video/x-msvideo";
             case "bin":
+            case "class":
+            case "exe":
                 return "application/octet-stream";
             case "bmp":
                 return "image/bmp";
             case "c":
                 return "text/plain";
-            case "class":
-                return "application/octet-stream";
             case "conf":
                 return "text/plain";
             case "cpp":
@@ -190,13 +202,12 @@ public class OpenFilePlugin implements MethodCallHandler
             case "docx":
                 return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             case "xls":
+            case "csv":
                 return "application/vnd.ms-excel";
             case "xlsx":
                 return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             case "epub":
                 return "application/epub+zip";
-            case "exe":
-                return "application/octet-stream";
             case "gif":
                 return "image/gif";
             case "gtar":
@@ -218,7 +229,7 @@ public class OpenFilePlugin implements MethodCallHandler
             case "jpg":
                 return "image/jpeg";
             case "js":
-                return "application/x-javaScript";
+                return "application/x-javascript";
             case "log":
                 return "text/plain";
             case "m3u":
@@ -343,9 +354,9 @@ public class OpenFilePlugin implements MethodCallHandler
             openApkFile();
             return false;
         }
-        for (int i = 0; i < strings.length; i++) {
-            if (!hasPermission(strings[i])) {
-                result(-3, "Permission denied: " + strings[i]);
+        for (String string : strings) {
+            if (!hasPermission(string)) {
+                result(-3, "Permission denied: " + string);
                 return false;
             }
         }
@@ -359,7 +370,7 @@ public class OpenFilePlugin implements MethodCallHandler
         if (requestCode == RESULT_CODE) {
             if (canInstallApk()) {
                 startActivity();
-                result(0, "done");
+//                result(0, "done");
             } else {
                 result(-3, "Permission denied: " + Manifest.permission.REQUEST_INSTALL_PACKAGES);
             }
@@ -382,7 +393,6 @@ public class OpenFilePlugin implements MethodCallHandler
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        this.flutterPluginBinding = null;
     }
 
     @Override
@@ -403,7 +413,7 @@ public class OpenFilePlugin implements MethodCallHandler
     }
 
     @Override
-    public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
+    public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
         onAttachedToActivity(binding);
     }
 
@@ -416,5 +426,6 @@ public class OpenFilePlugin implements MethodCallHandler
 
         channel.setMethodCallHandler(null);
         channel = null;
+        this.flutterPluginBinding = null;
     }
 }

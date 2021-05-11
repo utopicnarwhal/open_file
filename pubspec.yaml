@@ -1,16 +1,18 @@
 name: utopic_open_file
-description: A plug-in that can call native APP to open files with string result in flutter,support iOS(UTI) and android(intent)
+description: A plug-in that can call native APP to open files with string result in flutter, support iOS(UTI) / android(intent) / PC(ffi) / web(dart:html)
 version: 1.0.0
 homepage: https://github.com/utopicnarwhal/open_file
 
 dependencies:
   flutter:
     sdk: flutter
-  ffi: ^0.1.3
+  ffi: ^1.0.0
 
 environment:
-  sdk: ">=2.3.0 <3.0.0"
-  flutter: ">=1.12.0 <2.0.0"
+  sdk: '>=2.12.0 <3.0.0'
+  flutter: ">=1.12.0"
+# For information on the generic Dart part of this file, see the
+# following page: https://www.dartlang.org/tools/pub/pubspec
 
 flutter:
   plugin:
